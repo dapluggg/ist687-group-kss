@@ -6,6 +6,11 @@ library(sqldf)
 library(caret)
 library(mltools)
 library(tensorflow)
+library(keras)
+library(dplyr)
+library(nnet)
+
+install_tensorflow(version = "1.13.1") 
 
 kepler <- read_csv("~/Documents/GitHub/ist687-group-kss/cumulative.csv") # get data
 
@@ -53,10 +58,11 @@ f
 
 my_model <- neuralnet(f, 
                       data = train, 
-                      hidden = c(7,5,3),
-                      linear.output = FALSE,
+                      hidden = c(7,5,2),
+                      linear.output = TRUE,
                       lifesign = "full",
-                      threshold = 1.0)
+                      threshold = 0.6,
+                      rep = 1)
 
 summary(my_model)
 predicted <- predict(my_model, test_x)
@@ -76,6 +82,33 @@ plot(my_model)
 
 
 
+model <- keras_model_sequential() %>% 
+  layer_dense(input_shape = c(7), units = 50) %>% 
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 20, activation = "relu") %>% 
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 10, activation = "relu") %>% 
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(1, activation = "sigmoid")
+
+model %>% 
+  compile(
+    loss = "binary_crossentropy",
+    optimizer = "adam",
+    metrics = 'accuracy'
+  )
+summary(model)
+
+model %>% 
+  fit(
+    x = as.matrix(train[, 1:7]), y = as.matrix(train[, 8]),
+    epochs = 500,
+    validation_split = 0.3,
+    verbose = 2
+  )
+
+train_data <- model %>% 
+  keras::predict_classes(train)
 
 
-
+save_model_tf(object = model, filepath = "model")
